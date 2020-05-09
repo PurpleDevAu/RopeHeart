@@ -1,0 +1,32 @@
+[[package]]
+category = "main"
+description = "ANT and ANT-FS Python Library"
+name = "openant"
+optional = false
+python-versions = "*"
+version = "0.3"
+
+[package.dependencies]
+pyusb = ">=1.0a2"
+
+[package.source]
+reference = "b6125d1bd4b3f76daa8acac173d9d79b8d364e5f"
+type = "git"
+url = "https://github.com/Tigge/openant"
+[[package]]
+category = "main"
+description = "Python USB access module"
+name = "pyusb"
+optional = false
+python-versions = "*"
+version = "1.0.2"
+
+[metadata]
+content-hash = "96ad312c0f9b07ccba8efe0b03fef765ed83e4bb19f860a6b21e9fec35e683c7"
+python-versions = "^2.7"
+
+[metadata.files]
+openant = []
+pyusb = [
+    {file = "pyusb-1.0.2.tar.gz", hash = "sha256:4e9b72cc4a4205ca64fbf1f3fff39a335512166c151ad103e55c8223ac147362"},
+]
