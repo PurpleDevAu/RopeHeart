@@ -17,28 +17,29 @@ import sys
 
 NETWORK_KEY= [0xb9, 0xa5, 0x21, 0xfb, 0xbd, 0x72, 0xc3, 0x45]
 
-sessionCounter = 0
-fileName = None
-lastRead = time.time()
+session_counter = 0
+file_name = None
+last_read = time.time()
 today = datetime.now().strftime("%Y%m%d%H%M")
+heart_rate_label = None
+connection_indicator = None
 
 
 def on_data(data):
-    global fileName, heartRateLabel, connectionIndicator, lastRead
+    global file_name, heart_rate_label, connection_indicator, last_read
     
     heartrate = data[7]    
-    heartRateLabel.configure(text=heartrate)
-    connectionIndicator.configure(bg = "green")
-    lastRead = time.time()
+    heart_rate_label.configure(text=heartrate)
+    connection_indicator.configure(bg = "green")
+    last_read = time.time()
        
-    if fileName is None:
+    if file_name is None:
         pass
     else:
-        file = open(fileName,"a")        
-        file.write(str(heartrate) + ",")   
-        file.close()  
+        with open(file_name, 'a') as file:
+            file.write(str(heartrate) + ",")   
 
-def createNode():
+def create_node():
     global node
     try:  
         node = Node()
@@ -57,58 +58,57 @@ def createNode():
     finally:
         node.stop()
 
-def connectionChecker(): 
-    global lastRead, connectionIndicator
-    while(True):
+def connection_checker(): 
+    global last_read, connection_indicator
+    while True:
         now = time.time()
-        if(now - lastRead > 1):
-            connectionIndicator.configure(bg = "red")
+        if now - last_read > 1:
+            connection_indicator.configure(bg = "red")
 
 def on_clicked():
-    global fileName, sessionCounter, today, window, control_Button
-    if fileName is None:
-        fileName = f"recording_{today}_{sessionCounter}.csv"
-        sessionCounter += 1
-        recording_Label = Label(window, text=fileName)
-        recording_Label.grid(column = 0, row=(sessionCounter*2))
+    global file_name, session_counter, today, window, control_Button
+    if file_name is None:
+        file_name = f"recording_{today}_{session_counter}.csv"
+        session_counter += 1
+        recording_Label = Label(window, text=file_name)
+        recording_Label.grid(column = 0, row=(session_counter*2))
         control_Button.configure(text = "stop")
     else:
-        lastFile = fileName           
-        fileName = None
+        last_file = file_name           
+        file_name = None
         
-        file = open(lastFile)
-        data = csv.reader(file)      
-        reads = list(data)[0]
-        file.close()
+        with open(last_file) as file:
+            data = csv.reader(file)      
+            reads = list(data)[0]
         
         reads.pop()
         reads = list(map(int, reads))
         
         mean = round(statistics.mean(reads),1)
-        standardDeviation = round(statistics.stdev(reads),1)
-        maxReading = max(reads)
-        minReading = min(reads)
+        standard_deviation = round(statistics.stdev(reads),1)
+        max_reading = max(reads)
+        min_reading = min(reads)
         
-        stats = f"av:{mean}, SD:{standardDeviation}, max:{maxReading}, min:{minReading}"
-        file = open(lastFile,"a")
+        stats = f"av:{mean}, SD:{standard_deviation}, max:{max_reading}, min:{min_reading}"
+        file = open(last_file,"a")
         file.write("\n"+stats)
         file.close()
         
         recording_Label = Label(window, text=stats)
-        recording_Label.grid(column = 0, row=((sessionCounter*2)+1), columnspan=4)       
+        recording_Label.grid(column = 0, row=((session_counter*2)+1), columnspan=4)       
        
         control_Button.configure(text = "start")
  
 def createGui():
-    global window, heartRateLabel, connectionIndicator, control_Button
+    global window, heart_rate_label, connection_indicator, control_Button
 
     init_Thread = threading.Thread(
-        target = createNode
+        target = create_node
         )
     init_Thread.start()
     
     activeConnection_Thread = threading.Thread(
-        target = connectionChecker
+        target = connection_checker
         )
     activeConnection_Thread.start()
     
@@ -116,11 +116,11 @@ def createGui():
     window.title("Heart Rate Recorder")
     window.geometry("500x500")
     
-    heartRateLabel = Label(window, text='0')
-    heartRateLabel.grid(column = 2, row=0)
+    heart_rate_label = Label(window, text='0')
+    heart_rate_label.grid(column = 2, row=0)
 
-    connectionIndicator = Button(window, text="connection", bg = "red")
-    connectionIndicator.grid(column=0, row=0, columnspan=2)
+    connection_indicator = Button(window, text="connection", bg = "red")
+    connection_indicator.grid(column=0, row=0, columnspan=2)
             
     control_Button = Button(window, text="start", command=on_clicked)
     control_Button.grid(column=0, row=1)
