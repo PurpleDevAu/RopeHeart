@@ -40,9 +40,8 @@ def on_data(data):
             file.write(str(heartrate) + ",")   
 
 def create_node():
-    global node
-    try:  
-        node = Node()
+    node = Node()
+    def thread_func():
         node.set_network_key(0x00, NETWORK_KEY)
         channel = node.new_channel(Channel.Type.BIDIRECTIONAL_RECEIVE)
 
@@ -53,17 +52,24 @@ def create_node():
         channel.set_search_timeout(12)
         channel.set_rf_freq(57)
         channel.set_id(0, 120, 0)
-        channel.open()          
+        channel.open()    
         node.start()
-    finally:
-        node.stop()
+      
+    node_thread = threading.Thread(target=thread_func)
+    node_thread.start()
+    return node, node_thread
 
 def connection_checker(): 
     global last_read, connection_indicator
-    while True:
-        now = time.time()
-        if now - last_read > 1:
-            connection_indicator.configure(bg = "red")
+    stop_event = threading.Event()
+    def thread_func():
+        while not stop_event.is_set():
+            now = time.time()
+            if now - last_read > 1:
+                connection_indicator.configure(bg = "red")
+    conn_check_thread = threading.Thread(target=thread_func)
+    conn_check_thread.start()
+    return stop_event, conn_check_thread
 
 def on_clicked():
     global file_name, session_counter, today, window, control_Button
@@ -102,15 +108,8 @@ def on_clicked():
 def createGui():
     global window, heart_rate_label, connection_indicator, control_Button
 
-    init_Thread = threading.Thread(
-        target = create_node
-        )
-    init_Thread.start()
-    
-    activeConnection_Thread = threading.Thread(
-        target = connection_checker
-        )
-    activeConnection_Thread.start()
+    node, node_thread = create_node()
+    conn_check_stop_event, conn_check_thread = connection_checker()
     
     window = Tk()
     window.title("Heart Rate Recorder")
@@ -125,6 +124,12 @@ def createGui():
     control_Button = Button(window, text="start", command=on_clicked)
     control_Button.grid(column=0, row=1)
 
-    window.mainloop()
+    try:
+        window.mainloop()
+    finally:
+        conn_check_stop_event.set()
+        node.stop()
+        node_thread.join()
+        conn_check_thread.join()
 
 createGui()
