@@ -22,16 +22,13 @@ session_counter = 0
 file_name = None
 last_read = time.time()
 
-
-
 def on_data(data):
     global file_name, heartrate_label, window, last_read
     
     heartrate = data[7]    
     heartrate_label.configure(text=heartrate)
     window.configure(bg = "green")
-    last_read = time.time()
-    
+    last_read = time.time()    
        
     if file_name is None:
         pass
@@ -39,33 +36,36 @@ def on_data(data):
         now = datetime.now().strftime("%H:%M")
         with open(file_name,"a") as file:        
             file.write(now + "," + str(heartrate) + "\n" )   
-       
 
 def create_node():
-    global node
-    try:  
-        node = Node()
+    node = Node()
+    def thread_func():
         node.set_network_key(0x00, NETWORK_KEY)
         channel = node.new_channel(Channel.Type.BIDIRECTIONAL_RECEIVE)
 
         channel.on_broadcast_data = on_data
         channel.on_burst_data = on_data
-
         channel.set_period(8070)
         channel.set_search_timeout(12)
         channel.set_rf_freq(57)
         channel.set_id(0, 120, 0)
-        channel.open()          
+        channel.open()     
         node.start()
-    finally:
-        node.stop()
+    node_thread = threading.Thread(target=thread_func)
+    node_thread.start()
+    return node, node_thread
 
 def connection_checker(): 
     global last_read, window
-    while(True):
-        now = time.time()
-        if(now - last_read > 1):
-           window.configure(bg = "red")
+    stop_event = threading.Event()
+    def thread_func():
+        while not stop_event.is_set():
+            now = time.time()
+            if now - last_read > 1:
+                window.configure(bg = "red")
+    conn_check_thread = threading.Thread(target=thread_func)
+    conn_check_thread.start()
+    return stop_event, conn_check_thread
 
 def create_dir(file_path):
     global directory
@@ -117,20 +117,13 @@ def create_gui():
     today = datetime.now().strftime("%Y%m%d%H%M")
     create_dir(today)
 
-    init_thread = threading.Thread(
-        target = create_node
-        )
-    init_thread.start()
-    
-    active_connection_thread = threading.Thread(
-        target = connection_checker
-        )
-    active_connection_thread.start()
-    
     window = Tk()
     window.title("Heart Rate Recorder")
-    window.geometry("500x500")
+    window.geometry("500x500")  
     
+    node, node_thread = create_node()
+    conn_check_stop_event, conn_check_thread = connection_checker()
+
     heartrate_label = Label(window, text='0')
     heartrate_label.grid(column = 0, row=0)
             
@@ -139,6 +132,12 @@ def create_gui():
     
     window.bind('<space>', on_clicked)
 
-    window.mainloop()
+    try:
+        window.mainloop()
+    finally:
+        conn_check_stop_event.set()
+        node.stop()
+        node_thread.join()
+        conn_check_thread.join()
 
 create_gui()
