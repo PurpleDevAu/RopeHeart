@@ -21,6 +21,7 @@ NETWORK_KEY= [0xb9, 0xa5, 0x21, 0xfb, 0xbd, 0x72, 0xc3, 0x45]
 session_counter = 0
 file_name = None
 last_read = time.time()
+heart_rate_label = None
 
 def on_data(data):
     global file_name, heartrate_label, window, last_read
@@ -51,18 +52,22 @@ def create_node():
         channel.set_id(0, 120, 0)
         channel.open()     
         node.start()
+
     node_thread = threading.Thread(target=thread_func)
     node_thread.start()
     return node, node_thread
 
 def connection_checker(): 
+
     global last_read, window
+
     stop_event = threading.Event()
     def thread_func():
         while not stop_event.is_set():
             now = time.time()
             if now - last_read > 1:
                 window.configure(bg = "red")
+
     conn_check_thread = threading.Thread(target=thread_func)
     conn_check_thread.start()
     return stop_event, conn_check_thread
@@ -107,10 +112,9 @@ def on_clicked(event=None):
             file.write("\n"+stats)
         
         recording_Label = Label(window, text=stats)
-        recording_Label.grid(column = 0, row=((session_counter*2)+1))       
-       
+        recording_Label.grid(column = 0, row=((session_counter*2)+1))              
         control_button.configure(text = "start")
- 
+
 def create_gui():
     global window, heartrate_label, control_button
         
@@ -119,8 +123,8 @@ def create_gui():
 
     window = Tk()
     window.title("Heart Rate Recorder")
-    window.geometry("500x500")  
-    
+    window.geometry("500x500")      
+
     node, node_thread = create_node()
     conn_check_stop_event, conn_check_thread = connection_checker()
 
